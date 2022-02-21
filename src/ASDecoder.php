@@ -3,6 +3,10 @@
 namespace AppleSignIn;
 
 use Exception;
+use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 
 /**
  * Decode Sign In with Apple identity token, and produce an ASPayload for
@@ -18,73 +22,37 @@ class ASDecoder
 
     /**
      * Cache Hook
-     * @var array[][]
+     * @var string curl response
      */
-    public static $publicKeys = [];
+    public static $responseKeys = "";
 
     /**
      * Parse a provided Sign In with Apple identity token.
      *
      * @param string $identityToken
      * @return object|null
-     * @throws Exception
+     * @throws Exception|GuzzleException
      */
     public static function getAppleSignInPayload($identityToken)
     {
-        $identityPayload = self::decodeIdentityToken($identityToken);
-        return new ASPayload($identityPayload);
-    }
-
-    /**
-     * Decode the Apple encoded JWT using Apple's public key for the signing.
-     *
-     * @param string $identityToken
-     * @return object
-     * @throws Exception
-     */
-    public static function decodeIdentityToken($identityToken)
-    {
-        $publicKeyKid = JWT::getPublicKeyKid($identityToken);
-
-        $publicKeyData = self::fetchPublicKey($publicKeyKid);
-
-        return JWT::decode($identityToken, $publicKeyData['publicKey'], [$publicKeyData['alg']]);
+        return new ASPayload(JWT::decode($identityToken, self::fetchPublicKey()));
     }
 
     /**
      * Fetch Apple's public key from the auth/keys REST API to use to decode
      * the Sign In JWT.
      *
-     * @param string $publicKeyKid
      * @return array
      * @throws Exception
+     * @throws GuzzleException
      */
-    public static function fetchPublicKey($publicKeyKid)
+    public static function fetchPublicKey()
     {
-        if (array_key_exists($publicKeyKid, self::$publicKeys)) {
-            return self::$publicKeys[$publicKeyKid];
+        if (!self::$responseKeys) {
+            $ch = new Client();
+            self::$responseKeys  = $ch->get('https://appleid.apple.com/auth/keys')->getBody()->getContents();
         }
-
-        $publicKeys = ASCurl::get('https://appleid.apple.com/auth/keys');
-        $decodedPublicKeys = json_decode($publicKeys, true);
-
-        if (!isset($decodedPublicKeys['keys']) || count($decodedPublicKeys['keys']) < 1) {
-            throw new Exception('Invalid key format.');
-        }
-
-        $kids = array_column($decodedPublicKeys['keys'], 'kid');
-        $parsedKeyData = $decodedPublicKeys['keys'][array_search($publicKeyKid, $kids)];
-        $parsedPublicKey = JWK::parseKey($parsedKeyData);
-        $publicKeyDetails = openssl_pkey_get_details($parsedPublicKey);
-
-        if (!isset($publicKeyDetails['key'])) {
-            throw new Exception('Invalid public key details.');
-        }
-
-        return self::$publicKeys[$publicKeyKid] = [
-            'publicKey' => $publicKeyDetails['key'],
-            'alg' => $parsedKeyData['alg']
-        ];
+        return JWK::parseKeySet(json_decode(self::$responseKeys, true));
     }
 }
 
