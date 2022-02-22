@@ -1,7 +1,7 @@
 {
     "name": "yanlongli/php-apple-signin",
     "type": "library",
-    "description": "A simple library to decode and parse Apple Sign In client tokens.苹果账号登陆,替代 griffinledingham/php-apple-signin（已停止维护） ",
+    "description": "A simple library to decode and parse Apple Sign In client tokens.苹果账号登陆,替代 griffinledingham/php-apple-signin ",
     "keywords": ["apple","sign","in","ios","php","jwt","jwk","苹果","id","login","登陆"],
     "license": "BSD-3-Clause",
     "authors": [
