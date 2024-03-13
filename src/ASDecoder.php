@@ -30,12 +30,13 @@ class ASDecoder
      * Parse a provided Sign In with Apple identity token.
      *
      * @param string $identityToken
+     * @param array $allowedAlgorithms
      * @return object|null
      * @throws Exception|GuzzleException
      */
-    public static function getAppleSignInPayload($identityToken)
+    public static function getAppleSignInPayload($identityToken, $allowedAlgorithms)
     {
-        return new ASPayload(JWT::decode($identityToken, self::fetchPublicKey()));
+        return new ASPayload(JWT::decode($identityToken, self::fetchPublicKey(),$allowedAlgorithms));
     }
 
     /**
